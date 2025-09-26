@@ -10,14 +10,18 @@ Prerequisites
 -------------
 * A Microsoft Fabric workspace that is attached to the target capacity.
 * A PySpark runtime (Fabric Spark runtime or a local pyspark installation).
+* Ability to drive at least ~500 concurrent Spark actions (for example by using
+  ``--concurrency 512``) so that the F64 bursting/smoothing envelope is fully
+  exercised.
 * Optional: The ``requests`` package and an ``FABRIC_API_TOKEN`` environment
   variable to collect capacity metrics through the Fabric REST API.
 
 Typical usage within Fabric:
 
 ```
-spark-submit fabric_capacity_stress_test.py --mode both --duration 600 \
-    --burst-pattern "64:120,16:60" --job-size 500000000 --concurrency 32
+spark-submit fabric_capacity_stress_test.py --mode both --duration 900 \
+    --burst-pattern "640:180,320:120,512:240" --job-size 500000000 \
+    --concurrency 512
 ```
 
 The script records job level metrics such as latency, throughput, and whether
@@ -412,8 +416,12 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--concurrency",
         type=int,
-        default=32,
-        help="Number of concurrent jobs during sustained workloads",
+        default=512,
+        help=(
+            "Number of concurrent jobs during sustained workloads. F64 validation"
+            " guidance recommends >=500 concurrent Spark actions to exercise"
+            " bursting."
+        ),
     )
     parser.add_argument(
         "--job-size",
@@ -424,8 +432,11 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--partitions",
         type=int,
-        default=64,
-        help="Number of partitions to generate for synthetic data",
+        default=512,
+        help=(
+            "Number of partitions to generate for synthetic data. Match or exceed"
+            " the desired concurrency to keep executors busy."
+        ),
     )
     parser.add_argument(
         "--shuffle-partitions",
@@ -441,8 +452,12 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--burst-pattern",
         type=parse_burst_pattern,
-        default=parse_burst_pattern("64:180,16:120,72:90"),
-        help="Comma separated list of concurrency:duration values for spiky workloads",
+        default=parse_burst_pattern("640:180,512:240,768:120"),
+        help=(
+            "Comma separated list of concurrency:duration values for spiky"
+            " workloads. Each burst entry should provide a concurrency that"
+            " reflects the desired simulated user count."
+        ),
     )
     parser.add_argument(
         "--idle-between-bursts",
