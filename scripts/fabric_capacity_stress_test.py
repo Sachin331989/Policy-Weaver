@@ -477,7 +477,10 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         default=None,
         help="Optional Fabric workspace identifier for scoped metrics",
     )
-    return parser.parse_args(argv)
+    args, unknown = parser.parse_known_args(argv)
+    if unknown:
+        _LOGGER.debug("Ignoring unrecognised arguments from upstream caller: %%s", unknown)
+    return args
 
 
 def configure_logging(level: str) -> None:
